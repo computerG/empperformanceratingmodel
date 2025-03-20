@@ -4,11 +4,12 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 from scipy.stats.mstats import winsorize
-from imblearn.over_sampling import SMOTE #SMOTE(synthetic minority oversampling techinque)
+from imblearn.over_sampling import (
+    SMOTE,
+)  # SMOTE(synthetic minority oversampling techinque)
 import joblib
 
 import os
-
 import logging
 
 # Define a path to save the trained model and encoders
@@ -27,7 +28,6 @@ cat_column = [
 ]
 
 # Automatically identify numerical columns
-
 
 def load_data():
     df_employee = pd.read_excel(
@@ -55,15 +55,15 @@ categorical_columns = (
 
 # Initialize encoders
 severity_encoder = LabelEncoder()
+
 def remove_outliers(dataframe, columns):
     for column in columns:
         winsorized_data = winsorize(dataframe[column], (0, 0.06))
         dataframe[column] = winsorized_data
     return dataframe
 
-
 def preprocess_data(df):
-    if 'EmpNumber' in df.columns:
+    if "EmpNumber" in df.columns:
         df.drop("EmpNumber", axis=1)
     df = remove_outliers(df, numerical_columns)
     return df
@@ -74,24 +74,26 @@ def encode_data(df):
     label_encoders = {col: LabelEncoder() for col in categorical_columns}
     for col in categorical_columns:
         df[col] = label_encoders[col].fit_transform(df[col])
-    if 'PerformanceRating' in df.columns:
-        df["PerformanceRating"] = severity_encoder.fit_transform(df["PerformanceRating"])
+    if "PerformanceRating" in df.columns:
+        df["PerformanceRating"] = severity_encoder.fit_transform(
+            df["PerformanceRating"]
+        )
     logging.info("Data encoded successfully.")
     return df
 
 
 def train_model():
-    #check the train model and train the model
+    # check the train model and train the model
     df = load_data()
     df = encode_data(df)
-    X = df.drop(columns=["PerformanceRating"],axis=1)
+    X = df.drop(columns=["PerformanceRating"], axis=1)
     y = df["PerformanceRating"]
-    sm = SMOTE() # obeject creation
-    X,y = sm.fit_resample(X,y)
+    sm = SMOTE()  # obeject creation
+    X, y = sm.fit_resample(X, y)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
-    
+
     model = RandomForestClassifier(random_state=42)
     model.fit(X_train, y_train)
     joblib.dump(model, MODEL_PATH)
@@ -105,7 +107,7 @@ def train_model():
         for i in unique_classes
         if i < len(severity_encoder.classes_)
     ]
-    print(f'Target names {target_names}')
+    print(f"Target names {target_names}")
     """ report = classification_report(
         y_test,
         y_pred,
@@ -117,6 +119,7 @@ def train_model():
 
     return model
 
+
 def load_model():
     if not os.path.exists(MODEL_PATH) or not os.path.exists(ENCODER_PATH):
         return train_model()
@@ -126,7 +129,9 @@ def load_model():
     logging.info("Model and encoder loaded successfully.")
     print(severity_encoder)
     return model
+
+
 def predict_model(model, X):
     prediction = model.predict(X)
-    
+
     return severity_encoder.inverse_transform(prediction)
